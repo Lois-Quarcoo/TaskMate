@@ -1,7 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api, setToken, setAndroidEmulatorEnv } from '../services/api';
-import { Platform } from 'react-native';
+import { api, setToken } from '../services/api';
 
 export const AuthContext = createContext();
 
@@ -12,10 +11,6 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Detect android emulator environments
-    if (Platform.OS === 'android') {
-      setAndroidEmulatorEnv();
-    }
     loadStorageData();
   }, []);
 
@@ -29,19 +24,6 @@ export const AuthProvider = ({ children }) => {
         setToken(storedToken);
         setTokenState(storedToken);
         setUser(parsedUser);
-        
-        // Refresh profile in background to get latest XP and achievements
-        api.auth.getProfile()
-          .then((res) => {
-            if (res.success) {
-              setUser(res.data);
-              AsyncStorage.setItem('userData', JSON.stringify(res.data));
-            }
-          })
-          .catch((err) => {
-            console.log('Session validation failed, logging out...');
-            logout();
-          });
       }
     } catch (e) {
       console.error('Failed to load storage data:', e);
@@ -57,13 +39,9 @@ export const AuthProvider = ({ children }) => {
       const response = await api.auth.login(email, password);
       if (response.success) {
         const { token: userTokenData, ...userData } = response.data;
-        
-        // Save to state
         setToken(userTokenData);
         setTokenState(userTokenData);
         setUser(userData);
-
-        // Save to local storage
         await AsyncStorage.setItem('userToken', userTokenData);
         await AsyncStorage.setItem('userData', JSON.stringify(userData));
         return { success: true };
@@ -83,13 +61,9 @@ export const AuthProvider = ({ children }) => {
       const response = await api.auth.register(username, email, password);
       if (response.success) {
         const { token: userTokenData, ...userData } = response.data;
-
-        // Save to state
         setToken(userTokenData);
         setTokenState(userTokenData);
         setUser(userData);
-
-        // Save to storage
         await AsyncStorage.setItem('userToken', userTokenData);
         await AsyncStorage.setItem('userData', JSON.stringify(userData));
         return { success: true };
@@ -103,7 +77,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    setLoading(true);
     try {
       setToken(null);
       setTokenState(null);
@@ -112,8 +85,6 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.removeItem('userData');
     } catch (e) {
       console.error('Failed to logout:', e);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -135,19 +106,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        loading,
-        error,
-        login,
-        register,
-        logout,
-        refreshProfile,
-        updateUserProfileState,
-      }}
-    >
+    <AuthContext.Provider value={{
+      user, token, loading, error,
+      login, register, logout,
+      refreshProfile, updateUserProfileState,
+    }}>
       {children}
     </AuthContext.Provider>
   );
