@@ -142,7 +142,7 @@ export const TaskProvider = ({ children }) => {
     try {
       const res = await api.sessions.stats();
       if (res.success) {
-        setStats(res.data.data);
+        setStats(res.data);
       }
     } catch (err) {
       console.error('Error fetching stats:', err);
